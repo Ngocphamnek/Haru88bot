@@ -1,22 +1,22 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Haru88 Bot API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: admin
+    description: Admin operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +24,941 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Login result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLoginResult"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get admin dashboard stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/system-stats:
+    get:
+      operationId: getSystemStats
+      tags: [admin]
+      summary: Get system runtime stats (bot status, uptime, Redis, bank)
+      responses:
+        "200":
+          description: System stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStats"
+
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Get all bot settings
+      responses:
+        "200":
+          description: Settings list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BotSetting"
+    post:
+      operationId: saveAdminSettings
+      tags: [admin]
+      summary: Save bot settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveSettingsInput"
+      responses:
+        "200":
+          description: Save result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveSettingsResult"
+
+  /admin/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: Get all bot users
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUsersResult"
+
+  /admin/users/{userId}/ban:
+    post:
+      operationId: banUser
+      tags: [admin]
+      summary: Ban or unban a user
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanUserInput"
+      responses:
+        "200":
+          description: Ban result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BanUserResult"
+
+  /admin/users/{userId}/balance:
+    post:
+      operationId: adjustUserBalance
+      tags: [admin]
+      summary: Adjust user balance
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjustBalanceInput"
+      responses:
+        "200":
+          description: Adjust result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdjustBalanceResult"
+
+  /admin/transactions:
+    get:
+      operationId: getAdminTransactions
+      tags: [admin]
+      summary: Get transactions
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: userId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transactions list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTransactionsResult"
+
+  /admin/withdrawals:
+    get:
+      operationId: getWithdrawals
+      tags: [admin]
+      summary: Get pending withdrawal requests
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Withdrawals list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawalsResult"
+
+  /admin/withdrawals/{id}/approve:
+    post:
+      operationId: approveWithdrawal
+      tags: [admin]
+      summary: Approve a withdrawal request
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approve result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/withdrawals/{id}/reject:
+    post:
+      operationId: rejectWithdrawal
+      tags: [admin]
+      summary: Reject a withdrawal request
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectInput"
+      responses:
+        "200":
+          description: Reject result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/gift-codes:
+    get:
+      operationId: getGiftCodes
+      tags: [admin]
+      summary: Get all gift codes
+      responses:
+        "200":
+          description: Gift codes list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GiftCode"
+    post:
+      operationId: createGiftCode
+      tags: [admin]
+      summary: Create a gift code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GiftCodeInput"
+      responses:
+        "200":
+          description: Created gift code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GiftCode"
+
+  /admin/gift-codes/{id}/deactivate:
+    post:
+      operationId: deactivateGiftCode
+      tags: [admin]
+      summary: Deactivate a gift code
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deactivate result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/analytics/revenue:
+    get:
+      operationId: getRevenueAnalytics
+      tags: [admin]
+      summary: Get revenue analytics (daily/weekly/monthly)
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+      responses:
+        "200":
+          description: Revenue analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueAnalytics"
+
+  /admin/analytics/games:
+    get:
+      operationId: getGameAnalytics
+      tags: [admin]
+      summary: Get per-game win/loss stats
+      responses:
+        "200":
+          description: Game analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameAnalytics"
+
+  /admin/analytics/top-players:
+    get:
+      operationId: getTopPlayers
+      tags: [admin]
+      summary: Get top players by deposit or wagering
+      parameters:
+        - in: query
+          name: by
+          schema:
+            type: string
+            enum: [deposit, wagering]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Top players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopPlayer"
+
+  /admin/analytics/reconciliation:
+    get:
+      operationId: getReconciliation
+      tags: [admin]
+      summary: Get balance reconciliation report
+      responses:
+        "200":
+          description: Reconciliation data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationResult"
+
+  /admin/fraud/suspicious:
+    get:
+      operationId: getSuspiciousAccounts
+      tags: [admin]
+      summary: Get accounts with suspicious activity
+      responses:
+        "200":
+          description: Suspicious accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SuspiciousAccount"
+
+  /admin/support/requests:
+    get:
+      operationId: getSupportRequests
+      tags: [admin]
+      summary: Get pending support requests
+      responses:
+        "200":
+          description: Support requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportRequest"
+
+  /admin/support/connect/{userId}:
+    post:
+      operationId: connectSupportUser
+      tags: [admin]
+      summary: Connect to support user
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Connect result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/support/disconnect/{userId}:
+    post:
+      operationId: disconnectSupportUser
+      tags: [admin]
+      summary: Disconnect support user
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Disconnect result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/support/reject/{userId}:
+    post:
+      operationId: rejectSupportUser
+      tags: [admin]
+      summary: Reject support user
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reject result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/bank-login:
+    post:
+      operationId: bankLogin
+      tags: [admin]
+      summary: Trigger bank auto-login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankLoginInput"
+      responses:
+        "200":
+          description: Bank login result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/check-balance-now:
+    post:
+      operationId: checkBankBalanceNow
+      tags: [admin]
+      summary: Force bank balance check now
+      responses:
+        "200":
+          description: Balance check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
+  /admin/maintenance:
+    post:
+      operationId: triggerMaintenance
+      tags: [admin]
+      summary: Trigger maintenance cleanup
+      responses:
+        "200":
+          description: Maintenance result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    AdminLoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    AdminLoginResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        token:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+
+    AdminStats:
+      type: object
+      required: [totalUsers, totalDeposits, totalWithdrawals, totalBets, activeToday]
+      properties:
+        totalUsers:
+          type: integer
+        totalDeposits:
+          type: number
+        totalWithdrawals:
+          type: number
+        totalBets:
+          type: number
+        activeToday:
+          type: integer
+
+    SystemStats:
+      type: object
+      properties:
+        uptime:
+          type: number
+        botMainRunning:
+          type: boolean
+        bot2Running:
+          type: boolean
+        supportBotRunning:
+          type: boolean
+        redisConnected:
+          type: boolean
+        bankConnected:
+          type: boolean
+        pendingWithdrawals:
+          type: integer
+        pendingSupport:
+          type: integer
+
+    BotSetting:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    SaveSettingsInput:
+      type: object
+      required: [settings]
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BotSetting"
+
+    SaveSettingsResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: ["string", "null"]
+
+    BotUser:
+      type: object
+      required: [id, balance, totalGames, totalWagered, isAdmin, isBanned, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        username:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        balance:
+          type: string
+        totalWagered:
+          type: string
+        totalGames:
+          type: integer
+        vipLevel:
+          type: ["string", "null"]
+        commission:
+          type: string
+        referralCode:
+          type: ["string", "null"]
+        referredBy:
+          type: ["string", "null"]
+        referralCount:
+          type: integer
+        referralEarnings:
+          type: string
+        isAdmin:
+          type: boolean
+        isBanned:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    AdminUsersResult:
+      type: object
+      required: [users, total]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/BotUser"
+        total:
+          type: integer
+
+    BanUserInput:
+      type: object
+      required: [banned]
+      properties:
+        banned:
+          type: boolean
+
+    BanUserResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: ["string", "null"]
+
+    AdjustBalanceInput:
+      type: object
+      required: [amount, type]
+      properties:
+        amount:
+          type: number
+        type:
+          type: string
+        note:
+          type: ["string", "null"]
+
+    AdjustBalanceResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        newBalance:
+          type: ["string", "null"]
+        message:
+          type: ["string", "null"]
+
+    Transaction:
+      type: object
+      required: [id, userId, type, amount, status, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        type:
+          type: string
+        amount:
+          type: string
+        status:
+          type: string
+        method:
+          type: ["string", "null"]
+        externalId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AdminTransactionsResult:
+      type: object
+      required: [transactions, total]
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        total:
+          type: integer
+
+    Withdrawal:
+      type: object
+      required: [id, userId, amount, status, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        amount:
+          type: string
+        bankName:
+          type: ["string", "null"]
+        bankNumber:
+          type: ["string", "null"]
+        bankOwner:
+          type: ["string", "null"]
+        method:
+          type: ["string", "null"]
+        status:
+          type: string
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    WithdrawalsResult:
+      type: object
+      required: [withdrawals, total]
+      properties:
+        withdrawals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Withdrawal"
+        total:
+          type: integer
+
+    RejectInput:
+      type: object
+      properties:
+        reason:
+          type: string
+
+    ActionResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: ["string", "null"]
+
+    GiftCode:
+      type: object
+      required: [id, code, amount, maxUses, usedCount, isActive, createdAt]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        amount:
+          type: string
+        maxUses:
+          type: integer
+        usedCount:
+          type: integer
+        isActive:
+          type: boolean
+        createdBy:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    GiftCodeInput:
+      type: object
+      required: [code, amount, maxUses]
+      properties:
+        code:
+          type: string
+        amount:
+          type: string
+        maxUses:
+          type: integer
+
+    RevenueAnalytics:
+      type: object
+      properties:
+        totalDeposit:
+          type: number
+        totalWithdrawal:
+          type: number
+        netRevenue:
+          type: number
+        dailyData:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyRevenue"
+
+    DailyRevenue:
+      type: object
+      required: [date, deposit, withdrawal]
+      properties:
+        date:
+          type: string
+        deposit:
+          type: number
+        withdrawal:
+          type: number
+
+    GameAnalytics:
+      type: object
+      properties:
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/GameStat"
+        activity:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyActivity"
+
+    GameStat:
+      type: object
+      required: [gameType, totalBets, totalWagered, totalPayout, houseProfit, winRate]
+      properties:
+        gameType:
+          type: string
+        totalBets:
+          type: integer
+        totalWagered:
+          type: number
+        totalPayout:
+          type: number
+        houseProfit:
+          type: number
+        winRate:
+          type: number
+
+    DailyActivity:
+      type: object
+      required: [date, bets]
+      properties:
+        date:
+          type: string
+        bets:
+          type: integer
+
+    TopPlayer:
+      type: object
+      required: [userId, amount]
+      properties:
+        userId:
+          type: string
+        username:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        amount:
+          type: number
+        vipLevel:
+          type: ["string", "null"]
+
+    ReconciliationResult:
+      type: object
+      properties:
+        systemBalance:
+          type: number
+        bankBalance:
+          type: ["number", "null"]
+        expectedBalance:
+          type: number
+        discrepancy:
+          type: number
+        hasAlert:
+          type: boolean
+        alertMessage:
+          type: ["string", "null"]
+
+    SuspiciousAccount:
+      type: object
+      required: [userId, reason, score]
+      properties:
+        userId:
+          type: string
+        username:
+          type: ["string", "null"]
+        reason:
+          type: string
+        score:
+          type: number
+        winRate:
+          type: ["number", "null"]
+        depositCount24h:
+          type: ["integer", "null"]
+
+    SupportRequest:
+      type: object
+      required: [userId, status, isConnected, requestedAt]
+      properties:
+        userId:
+          type: string
+        username:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        content:
+          type: string
+        status:
+          type: string
+        isConnected:
+          type: boolean
+        requestedAt:
+          type: string
+
+    BankLoginInput:
+      type: object
+      required: [bank]
+      properties:
+        bank:
+          type: string
+          enum: [msb, techcombank, hdbank]
