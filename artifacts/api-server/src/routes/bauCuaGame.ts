@@ -787,7 +787,14 @@ router.get("/games/bau-cua", async (req: Request, res: Response): Promise<void> 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   const tgid = String(req.query.tgid || "");
-  const lang = tgid ? await storage.getUserLanguage(tgid) : "vi";
+  let lang = "vi";
+  if (tgid) {
+    try {
+      lang = await storage.getUserLanguage(tgid);
+    } catch {
+      lang = "vi";
+    }
+  }
   res.send(__decorateGameHtml(BAU_CUA_HTML, lang));
 });
 

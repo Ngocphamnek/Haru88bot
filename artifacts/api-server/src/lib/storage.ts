@@ -1,5 +1,6 @@
 import { db } from "@workspace/db";
 import { balanceSyncService } from "./balanceSyncService";
+import { logger } from "./logger";
 import {
   botUsersTable,
   transactionsTable,
@@ -65,23 +66,28 @@ class Storage {
       // Redis unavailable — fall through to DB
     }
 
-    const [user] = await db
-      .select()
-      .from(botUsersTable)
-      .where(eq(botUsersTable.id, userId))
-      .limit(1);
+    try {
+      const [user] = await db
+        .select()
+        .from(botUsersTable)
+        .where(eq(botUsersTable.id, userId))
+        .limit(1);
 
-    // Populate balance cache on successful DB read
-    if (user) {
-      try {
-        const { setCachedUserBalance } = await import("./cache");
-        await setCachedUserBalance(userId, parseFloat(user.balance));
-      } catch {
-        // ignore
+      // Populate balance cache on successful DB read
+      if (user) {
+        try {
+          const { setCachedUserBalance } = await import("./cache");
+          await setCachedUserBalance(userId, parseFloat(user.balance));
+        } catch {
+          // ignore
+        }
       }
-    }
 
-    return user ?? null;
+      return user ?? null;
+    } catch (err) {
+      logger.warn({ err, userId }, "storage.getBotUser failed, returning null");
+      return null;
+    }
   }
 
   async createBotUser(data: InsertBotUser): Promise<BotUser> {
