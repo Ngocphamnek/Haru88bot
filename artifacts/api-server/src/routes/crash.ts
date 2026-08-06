@@ -899,10 +899,19 @@ connect();
 /*  Routes                                                      */
 /* ─────────────────────────────────────────────────────────── */
 
-router.get("/games/may-bay", (_req: Request, res: Response): void => {
+function __decorateGameHtml(html: string, lang: string): string {
+  const safeLang = lang && lang.length >= 2 ? lang.slice(0, 2) : "vi";
+  return html
+    .replace('<html lang="vi">', `<html lang="${safeLang}">`)
+    .replace('<body>', `<body><script>window.__HARU_LANG__=${JSON.stringify(safeLang)};</script>`);
+}
+
+router.get("/games/may-bay", async (req: Request, res: Response): Promise<void> => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
-  res.send(MAY_BAY_HTML);
+  const tgid = String(req.query.tgid || "");
+  const lang = tgid ? await storage.getUserLanguage(tgid) : "vi";
+  res.send(__decorateGameHtml(MAY_BAY_HTML, lang));
 });
 
 router.get("/games/crash-stream", async (req: Request, res: Response): Promise<void> => {
