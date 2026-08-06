@@ -2637,6 +2637,15 @@ class TelegramBotService {
       case "confirm_bank_setup": {
         const temp = this.bankSetupTemp.get(userId);
         if (temp?.bankCode && temp.accountNumber && temp.accountHolderName) {
+          const uniqueness = await this.checkBankAccountUniqueness(userId, temp.accountNumber);
+          if (!uniqueness.ok) {
+            await this.bot.sendMessage(chatId, uniqueness.message ?? "❌ Số tài khoản này đã được sử dụng.", { parse_mode: 'HTML' });
+            this.bankSetupTemp.delete(userId);
+            this.customAmountWaiting.delete(`bank_setup_account_${userId}`);
+            this.customAmountWaiting.delete(`bank_setup_holder_${userId}`);
+            return;
+          }
+
           const existingBankStr = await storage.getSetting(`user_bank_${userId}`);
           let existingBank: any = null;
           if (existingBankStr) {
@@ -2698,7 +2707,7 @@ class TelegramBotService {
         this.bankSetupTemp.delete(userId);
         this.customAmountWaiting.delete(`bank_setup_account_${userId}`);
         this.customAmountWaiting.delete(`bank_setup_holder_${userId}`);
-        await this.showSetupBank(chatId, userId);
+        await this.sendMainMenu(chatId, messageId);
         break;
       default:
         await this.bot.sendMessage(chatId, "❓ Tính năng đang phát triển...");
@@ -3008,6 +3017,12 @@ class TelegramBotService {
       const accountNumber = text.trim().replace(/[^\d]/g, '');
       if (accountNumber.length < 6 || accountNumber.length > 20) {
         await this.bot.sendMessage(chatId, "❌ Số tài khoản không hợp lệ (cần 6-20 chữ số). Nhập lại:");
+        this.customAmountWaiting.add(`bank_setup_account_${userId}`);
+        return;
+      }
+      const uniqueness = await this.checkBankAccountUniqueness(userId, accountNumber);
+      if (!uniqueness.ok) {
+        await this.bot.sendMessage(chatId, uniqueness.message ?? "❌ Số tài khoản này đã được sử dụng.", { parse_mode: 'HTML' });
         this.customAmountWaiting.add(`bank_setup_account_${userId}`);
         return;
       }
@@ -8569,6 +8584,32 @@ class TelegramBotService {
     { code: "ZALOPAY",     name: "ZaloPay" },
     { code: "VIETTEL",     name: "ViettelMoney" },
   ];
+
+  private async checkBankAccountUniqueness(userId: string, accountNumber: string): Promise<{ ok: boolean; message?: string }> {
+    const normalized = accountNumber.replace(/\D/g, "");
+    if (!normalized) {
+      return { ok: false, message: "❌ Số tài khoản không hợp lệ." };
+    }
+
+    const settings = await storage.getAllSettings();
+    for (const setting of settings) {
+      if (!setting.key.startsWith("user_bank_")) continue;
+      if (setting.key === `user_bank_${userId}`) continue;
+      try {
+        const bankInfo = JSON.parse(setting.value as string);
+        if (bankInfo?.accountNumber === normalized) {
+          return {
+            ok: false,
+            message: `❌ Số tài khoản <code>${normalized}</code> đã được người khác sử dụng. Vui lòng nhập số khác.`,
+          };
+        }
+      } catch {
+        // Ignore malformed entries
+      }
+    }
+
+    return { ok: true };
+  }
 
   private async showSetupBank(chatId: number, userId: string) {
     if (!this.bot) return;

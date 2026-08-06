@@ -327,9 +327,15 @@ function buildRoomPayload(room: GameRoom): string {
 
 function broadcastRoom(room: GameRoom) {
   const msg = buildRoomPayload(room);
-  for (const p of room.players.values()) {
+  for (const [tgId, p] of room.players.entries()) {
     if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-      p.ws.send(msg);
+      try {
+        p.ws.send(msg);
+      } catch {
+        p.ws = null;
+        p.connected = false;
+        room.players.delete(tgId);
+      }
     }
   }
   broadcastSSE(room, msg);
@@ -337,7 +343,11 @@ function broadcastRoom(room: GameRoom) {
 
 function sendToPlayer(ws: WebSocket, data: object) {
   if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(data));
+    try {
+      ws.send(JSON.stringify(data));
+    } catch {
+      // Ignore closed sockets
+    }
   }
 }
 
