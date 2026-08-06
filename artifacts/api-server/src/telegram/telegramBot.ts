@@ -18,6 +18,7 @@ import { getWebGameSession } from "../lib/webGameLock";
 import { tr, buildLangKeyboard, langLabel, SUPPORTED_LANGUAGES } from "../lib/i18n";
 import { issueGameToken } from "../lib/security.js";
 import { generateBankQR } from "../lib/qrGenerator";
+import { checkBankAccountUniqueness, normalizeBankAccountNumber } from "../lib/bankAccountUtils";
 
 // Works on both Replit (dev) and Render/Docker (prod)
 // import.meta.url → dist/index.mjs → up one level = artifacts/api-server/public/
@@ -2707,6 +2708,7 @@ class TelegramBotService {
         this.bankSetupTemp.delete(userId);
         this.customAmountWaiting.delete(`bank_setup_account_${userId}`);
         this.customAmountWaiting.delete(`bank_setup_holder_${userId}`);
+        await this.bot.sendMessage(chatId, "↩️ Đã hủy thiết lập ngân hàng. Quay về menu chính.", { parse_mode: "HTML" });
         await this.sendMainMenu(chatId, messageId);
         break;
       default:
@@ -8586,29 +8588,19 @@ class TelegramBotService {
   ];
 
   private async checkBankAccountUniqueness(userId: string, accountNumber: string): Promise<{ ok: boolean; message?: string }> {
-    const normalized = accountNumber.replace(/\D/g, "");
-    if (!normalized) {
-      return { ok: false, message: "❌ Số tài khoản không hợp lệ." };
-    }
-
     const settings = await storage.getAllSettings();
-    for (const setting of settings) {
-      if (!setting.key.startsWith("user_bank_")) continue;
-      if (setting.key === `user_bank_${userId}`) continue;
-      try {
-        const bankInfo = JSON.parse(setting.value as string);
-        if (bankInfo?.accountNumber === normalized) {
-          return {
-            ok: false,
-            message: `❌ Số tài khoản <code>${normalized}</code> đã được người khác sử dụng. Vui lòng nhập số khác.`,
-          };
+    const existingAccounts = settings
+      .filter((setting) => setting.key.startsWith("user_bank_") && setting.key !== `user_bank_${userId}`)
+      .map((setting) => {
+        try {
+          const bankInfo = JSON.parse(setting.value as string);
+          return { userId: setting.key.replace("user_bank_", ""), accountNumber: bankInfo?.accountNumber };
+        } catch {
+          return { userId: setting.key.replace("user_bank_", ""), accountNumber: null };
         }
-      } catch {
-        // Ignore malformed entries
-      }
-    }
+      });
 
-    return { ok: true };
+    return checkBankAccountUniqueness(accountNumber, userId, existingAccounts);
   }
 
   private async showSetupBank(chatId: number, userId: string) {
