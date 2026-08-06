@@ -2362,6 +2362,10 @@ class TelegramBotService {
         const label = ["MOMO","ZALOPAY","VNPAY","VIETTEL","SHOPEEPAY"].includes(selectedCode)
           ? "số điện thoại đăng ký ví"
           : "số tài khoản ngân hàng";
+        // Xóa tin nhắn chứa bàn phím chọn ngân hàng trước khi hỏi STK
+        if (messageId) {
+          try { await this.bot.deleteMessage(chatId, messageId); } catch { /* bỏ qua nếu không xóa được */ }
+        }
         await this.bot.sendMessage(chatId,
           `✅ Đã chọn: <b>${bankEntry.name}</b>\n\n📝 Nhập <b>${label}</b>:`,
           { parse_mode: 'HTML' }
