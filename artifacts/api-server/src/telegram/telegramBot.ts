@@ -7265,10 +7265,6 @@ class TelegramBotService {
         inline_keyboard: [
           [
             { text: "🏦 Ngân hàng", callback_data: "rut_bank" },
-            { text: "📱 MoMo", callback_data: "rut_momo" },
-          ],
-          [
-            { text: "💙 ZaloPay", callback_data: "rut_zalopay" },
             { text: "🎫 Thẻ cào", callback_data: "rut_card" },
           ],
         ],
