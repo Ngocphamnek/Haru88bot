@@ -2,16 +2,30 @@
   const root = document.getElementById('app');
   if (!root) return;
 
+  const params = new URLSearchParams(window.location.search);
+  const tgid = params.get('tgid') || localStorage.getItem('haru88_tgid') || '';
+  const token = params.get('gtoken') || localStorage.getItem('haru88_gtoken') || '';
+
   const state = {
-    balance: 800000,
+    balance: 0,
     bet: 15000,
-    pick: '🐉',
+    pick: 'bau',
     round: 0,
-    history: []
+    history: [],
+    countdown: 0,
+    status: 'Đang kết nối...'
   };
-  const symbols = ['🐉', '🦅', '🐍', '🦌', '🐼', '🐺'];
+  const symbols = [
+    { id: 'bau', label: '🦀 Bầu' },
+    { id: 'cua', label: '🦀 Cua' },
+    { id: 'tom', label: '🦐 Tôm' },
+    { id: 'ca', label: '🐟 Cá' },
+    { id: 'ga', label: '🐓 Gà' },
+    { id: 'nai', label: '🦌 Nai' }
+  ];
   const diceFaces = ['🧿', '🪙', '🎲'];
 
+  let ws = null;
   const container = document.createElement('section');
   container.className = 'game-shell';
   root.innerHTML = '';
@@ -25,7 +39,7 @@
       <div class="title">Bầu Cua</div>
       <div class="row">
         <div class="badge"><span>💰</span><strong>${state.balance.toLocaleString('vi-VN')}₫</strong></div>
-        <div class="badge"><span>🎯</span><strong>Ván ${state.round}</strong></div>
+        <div class="badge"><span>🕒</span><strong>${state.countdown}s</strong></div>
       </div>`;
     container.appendChild(topbar);
 
@@ -46,10 +60,10 @@
     pickRow.className = 'row';
     symbols.forEach((sym) => {
       const btn = document.createElement('button');
-      btn.className = `button ${state.pick === sym ? 'active primary' : ''}`;
-      btn.textContent = sym;
+      btn.className = `button ${state.pick === sym.id ? 'active primary' : ''}`;
+      btn.textContent = sym.label;
       btn.addEventListener('click', () => {
-        state.pick = sym;
+        state.pick = sym.id;
         render();
       });
       pickRow.appendChild(btn);
@@ -72,15 +86,15 @@
 
     const result = document.createElement('div');
     result.className = 'result-banner neutral';
-    result.textContent = `Đang chờ mở: bạn chọn ${state.pick}`;
+    result.textContent = state.status;
     panel.appendChild(result);
 
     const action = document.createElement('div');
     action.className = 'row';
     const rollBtn = document.createElement('button');
     rollBtn.className = 'button success';
-    rollBtn.textContent = '🎲 Xúc xắc';
-    rollBtn.addEventListener('click', playRound);
+    rollBtn.textContent = '🎲 Đặt cược';
+    rollBtn.addEventListener('click', placeBet);
     action.appendChild(rollBtn);
     panel.appendChild(action);
 
@@ -97,40 +111,58 @@
     container.appendChild(panel);
   }
 
-  function playRound() {
-    if (state.balance < state.bet) return;
-    state.balance -= state.bet;
-    state.round += 1;
-    const tiles = Array.from(document.querySelectorAll('.tile'));
-    tiles.forEach((tile) => tile.classList.remove('highlight'));
-    window.__setGameFxState?.('roll');
-    const result = Array.from({ length: 3 }, () => symbols[Math.floor(Math.random() * symbols.length)]);
-    let step = 0;
-    const timer = setInterval(() => {
-      tiles.forEach((tile, idx) => tile.classList.toggle('highlight', idx === step % tiles.length));
-      step += 1;
-      if (step > 14) {
-        clearInterval(timer);
-        tiles.forEach((tile, idx) => {
-          const face = result[idx] || '🎲';
-          tile.textContent = face;
-          tile.classList.toggle('highlight', idx === result.findIndex((item) => item === state.pick));
-        });
-        const win = result.includes(state.pick);
-        const payout = win ? state.bet * 1.5 : 0;
-        state.balance += payout;
-        state.history.unshift(`🎲 ${result.join(' ')}`);
-        state.history = state.history.slice(0, 8);
-        const banner = document.querySelector('.result-banner');
-        if (banner) {
-          banner.className = `result-banner ${win ? 'win' : 'lose'}`;
-          banner.textContent = win ? `Đúng rồi! Nhận ${payout.toLocaleString('vi-VN')}₫` : `Kết quả ${result.join(' ')}`;
+  function placeBet() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      state.status = 'Chưa kết nối WebSocket';
+      render();
+      return;
+    }
+    ws.send(JSON.stringify({ type: 'bet', betType: state.pick, amount: state.bet, tgId: tgid, gameToken: token, gameType: 'baucua' }));
+    state.status = 'Đang gửi cược...';
+    render();
+  }
+
+  function connectSocket() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) ws.close();
+    state.status = 'Đang kết nối...';
+    render();
+    const socketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws?gameType=baucua&tgId=${encodeURIComponent(tgid)}&gtoken=${encodeURIComponent(token)}`;
+    ws = new WebSocket(socketUrl);
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ type: 'join', tgId: tgid, gameToken: token, gameType: 'baucua' }));
+      state.status = 'Đã kết nối';
+      render();
+    });
+    ws.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'user_info') {
+          state.balance = Number(data.balance || 0);
+          state.status = 'Sẵn sàng';
+        } else if (data.type === 'state') {
+          state.round = Number(data.sessionId || 0);
+          state.countdown = Number(data.countdown || 0);
+          state.status = data.state === 'result' ? 'Đã có kết quả' : data.state === 'playing' ? 'Đang diễn ra' : 'Đang chờ phiên mới';
+          if (data.result?.dice) {
+            state.history.unshift(`🎲 ${data.result.dice.join(' ')}`);
+            state.history = state.history.slice(0, 8);
+          }
+        } else if (data.type === 'bet_result') {
+          state.status = data.success ? 'Cược đã ghi nhận' : data.message;
+        } else if (data.type === 'balance_update') {
+          state.balance = Number(data.balance || state.balance);
+        } else if (data.type === 'error') {
+          state.status = data.message || 'Lỗi';
         }
-        window.__setGameFxState?.(win ? 'win' : 'lose');
         render();
-      }
-    }, 120);
+      } catch {}
+    });
+    ws.addEventListener('close', () => {
+      state.status = 'Mất kết nối';
+      render();
+    });
   }
 
   render();
+  connectSocket();
 })();

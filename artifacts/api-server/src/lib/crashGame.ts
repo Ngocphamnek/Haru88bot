@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { WebSocket } from "ws";
 import { storage } from "./storage";
 import { logger } from "./logger";
 import { webGameLock, webGameResolve, getPendingBets, sendBotNotify, registerBalanceListener, broadcastBalance } from "./webGameLock";
@@ -45,6 +46,7 @@ let crashPoint = 2.0;
 let tickTimer: ReturnType<typeof setInterval> | null = null;
 const history: RoundResult[] = [];
 const clients = new Map<string, CrashClient>();
+const wsClients = new Map<string, WebSocket>();
 
 // Tracks active bets for the current round, keyed by tgId.
 // Persists even if the player's SSE connection drops, so we can
@@ -77,16 +79,27 @@ function generateCrashPoint(): number {
 }
 
 function broadcast(data: object) {
-  const msg = `data: ${JSON.stringify(data)}\n\n`;
+  const payload = JSON.stringify(data);
+  const sseMsg = `data: ${payload}\n\n`;
   for (const [, c] of clients) {
-    try { c.res.write(msg); } catch {}
+    try { c.res.write(sseMsg); } catch {}
+  }
+  for (const [, ws] of wsClients) {
+    try {
+      if (ws.readyState === WebSocket.OPEN) ws.send(payload);
+    } catch {}
   }
 }
 
 function sendTo(tgId: string, data: object) {
+  const payload = JSON.stringify(data);
   const c = clients.get(tgId);
   if (c) {
-    try { c.res.write(`data: ${JSON.stringify(data)}\n\n`); } catch {}
+    try { c.res.write(`data: ${payload}\n\n`); } catch {}
+  }
+  const ws = wsClients.get(tgId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try { ws.send(payload); } catch {}
   }
 }
 
@@ -411,6 +424,22 @@ export function registerSSEClient(tgId: string, res: Response) {
   res.on("close", () => { if (clients.get(tgId)?.res === res) clients.delete(tgId); });
 
   return client;
+}
+
+export function registerCrashWebSocketClient(tgId: string, ws: WebSocket) {
+  const old = wsClients.get(tgId);
+  if (old && old !== ws) {
+    try { old.close(); } catch {}
+  }
+  wsClients.set(tgId, ws);
+  ws.on("close", () => {
+    const current = wsClients.get(tgId);
+    if (current === ws) wsClients.delete(tgId);
+  });
+}
+
+export function removeCrashWebSocketClient(tgId: string) {
+  wsClients.delete(tgId);
 }
 
 export function startCrashGame() {

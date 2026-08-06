@@ -17,6 +17,7 @@
   };
 
   let eventSource = null;
+  let ws = null;
   let hasPlacedBet = false;
   const audioCtx = typeof AudioContext !== 'undefined' ? new AudioContext() : null;
 
@@ -198,14 +199,23 @@
     render();
   }
 
-  function connectSSE() {
-    if (eventSource) eventSource.close();
+  function connectRealtime() {
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      ws.close();
+    }
     const params = new URLSearchParams(window.location.search);
     const tgid = params.get('tgid') || localStorage.getItem('haru88_tgid') || '';
     const token = params.get('gtoken') || localStorage.getItem('haru88_gtoken') || '';
-    const url = `/api/crash/games/crash-stream${tgid ? `?tgid=${encodeURIComponent(tgid)}` : ''}${token ? `&gtoken=${encodeURIComponent(token)}` : ''}`;
-    eventSource = new EventSource(url);
-    eventSource.onmessage = (evt) => {
+    const url = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws?gameType=maybay&tgId=${encodeURIComponent(tgid)}&gtoken=${encodeURIComponent(token)}`;
+    ws = new WebSocket(url);
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    });
+    ws.addEventListener('message', (evt) => {
       try {
         const data = JSON.parse(evt.data);
         if (data.type === 'phase') {
@@ -224,14 +234,16 @@
           state.balance = Number(data.balance || state.balance);
         } else if (data.type === 'result') {
           state.myCashout = Number(data.payout || 0);
+        } else if (data.type === 'user_info') {
+          state.balance = Number(data.balance || state.balance);
         }
         render();
         updateText();
       } catch {}
-    };
+    });
   }
 
   render();
   fetchState();
-  connectSSE();
+  connectRealtime();
 })();
