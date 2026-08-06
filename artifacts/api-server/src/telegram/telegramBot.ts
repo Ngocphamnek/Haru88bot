@@ -17,6 +17,7 @@ import { getSetting, getSettingNumber } from "../lib/settings";
 import { getWebGameSession } from "../lib/webGameLock";
 import { tr, buildLangKeyboard, langLabel, SUPPORTED_LANGUAGES } from "../lib/i18n";
 import { issueGameToken } from "../lib/security.js";
+import { buildGameWebAppUrl } from "../lib/telegramGameLinks";
 import { generateBankQR } from "../lib/qrGenerator";
 import { checkBankAccountUniqueness, normalizeBankAccountNumber } from "../lib/bankAccountUtils";
 
@@ -2235,26 +2236,26 @@ class TelegramBotService {
       
       switch (gameType) {
         case "xocdia":
-          gameUrl = `${base}/api/xoc-dia/games/xoc-dia?tgid=${userId}&gtoken=${issueGameToken(String(userId))}`;
+          gameUrl = buildGameWebAppUrl("xocdia", userId);
           gameName = "Xóc Đĩa";
           break;
         case "quaythu":
         case "quaythuong":
-          gameUrl = `${base}/api/quay-thu/games/quay-thu?tgid=${userId}&gtoken=${issueGameToken(String(userId))}`;
+          gameUrl = buildGameWebAppUrl("quaythu", userId);
           gameName = "Quay Thú";
           break;
         case "baucua":
-          gameUrl = `${base}/api/bau-cua/games/bau-cua?tgid=${userId}&gtoken=${issueGameToken(String(userId))}`;
+          gameUrl = buildGameWebAppUrl("baucua", userId);
           gameName = "Bầu Cua";
           break;
         case "maybay":
-          gameUrl = `${base}/api/crash/games/may-bay?tgid=${userId}&gtoken=${issueGameToken(String(userId))}`;
+          gameUrl = buildGameWebAppUrl("maybay", userId);
           gameName = "Máy Bay";
           break;
         case "rongho":
         case "sicbo":
         case "xucxac":
-          gameUrl = `${base}/api/xoc-dia/games/xoc-dia?tgid=${userId}&gtoken=${issueGameToken(String(userId))}`;
+          gameUrl = buildGameWebAppUrl("xocdia", userId);
           gameName = "Xóc Đĩa";
           break;
       }
@@ -5058,7 +5059,7 @@ class TelegramBotService {
         break;
         
       case "xocdia": {
-        const xocDiaUrl = `${this.getPublicUrl()}/api/xoc-dia/games/xoc-dia?tgid=${chatId}&gtoken=${issueGameToken(String(chatId))}`;
+        const xocDiaUrl = buildGameWebAppUrl("xocdia", chatId);
         keyboard = {
           inline_keyboard: [
             [
@@ -5077,7 +5078,7 @@ class TelegramBotService {
       }
 
       case "quaythu": {
-        const quayThuUrl = `${this.getPublicUrl()}/api/quay-thu/games/quay-thu?tgid=${chatId}&gtoken=${issueGameToken(String(chatId))}`;
+        const quayThuUrl = buildGameWebAppUrl("quaythu", chatId);
         keyboard = {
           inline_keyboard: [
             [
@@ -5095,7 +5096,7 @@ class TelegramBotService {
       }
 
       case "baucua":
-        const bauCuaUrl = `${this.getPublicUrl()}/api/bau-cua/games/bau-cua?tgid=${chatId}&gtoken=${issueGameToken(String(chatId))}`;
+        const bauCuaUrl = buildGameWebAppUrl("baucua", chatId);
         keyboard = {
           inline_keyboard: [
             [
