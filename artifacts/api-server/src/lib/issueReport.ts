@@ -7,8 +7,12 @@ export interface IssueReportItem {
 export function collectIssueReport(): IssueReportItem[] {
   const issues: IssueReportItem[] = [];
 
-  if (!process.env.DATABASE_URL) {
-    issues.push({ severity: "high", area: "database", message: "DATABASE_URL is not configured, so DB-backed game/user flows will fail." });
+  if (!process.env.DATABASE_URL && !process.env.RENDER_INTERNAL_DATABASE_URL && !process.env.RENDER_EXTERNAL_DATABASE_URL) {
+    issues.push({
+      severity: "high",
+      area: "database",
+      message: "DATABASE_URL is not configured, so DB-backed game/user flows will fail.",
+    });
   }
 
   if (!process.env.BOT_TOKEN && !process.env.BOT_TOKEN_FILE) {

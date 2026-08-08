@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -47,6 +49,9 @@ const replitDomains = (process.env.REPLIT_DOMAINS || "")
   .filter(Boolean)
   .map((d) => `https://${d}`);
 
+const renderUrl = (process.env.RENDER_EXTERNAL_URL || "").replace(/\/$/, "");
+const publicUrl = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+
 const defaultOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
@@ -54,7 +59,9 @@ const defaultOrigins = [
   "http://127.0.0.1:3000",
   ...replitDomains,
   ...extraOrigins,
-];
+  renderUrl,
+  publicUrl,
+].filter(Boolean);
 
 app.use(
   cors({
@@ -62,10 +69,15 @@ app.use(
       // Allow non-browser clients (no Origin) and Telegram webviews
       if (!origin) return cb(null, true);
       if (defaultOrigins.includes(origin)) return cb(null, true);
-      // Allow same-host deployments
+      // Allow same-host deployments on Render and Replit.
       try {
         const u = new URL(origin);
-        if (u.hostname.endsWith(".replit.dev") || u.hostname.endsWith(".repl.co")) {
+        if (
+          u.hostname.endsWith(".replit.dev") ||
+          u.hostname.endsWith(".repl.co") ||
+          u.hostname.endsWith(".onrender.com") ||
+          u.hostname.endsWith(".render.com")
+        ) {
           return cb(null, true);
         }
       } catch {
@@ -138,6 +150,22 @@ app.use("/api/crash/games/crash-bet", betLimiter);
 app.use("/api", apiLimiter);
 
 app.use("/api", router);
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const staticDir = path.resolve(__dirname, "./public");
+
+app.use(express.static(staticDir, { index: false }));
+app.get("/*", (req, res, next) => {
+  if (req.method !== "GET") {
+    return next();
+  }
+  if (req.path.startsWith("/api") || req.path.startsWith("/ws")) {
+    return next();
+  }
+  res.sendFile(path.join(staticDir, "index.html"), (err) => {
+    if (err) next(err);
+  });
+});
 
 // ── Auto-startup ────────────────────────────────────────────────────────────
 setTimeout(async () => {

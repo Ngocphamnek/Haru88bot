@@ -55,6 +55,12 @@ async function copyRuntimeAssets(distDir) {
 
   // Ensure data dir placeholder exists at runtime cwd expectation
   await mkdir(path.resolve(artifactDir, "data"), { recursive: true });
+
+  // Copy admin panel static build output if available
+  await copyIfExists(
+    path.resolve(artifactDir, "../admin-panel/dist/public"),
+    path.resolve(distDir, "public"),
+  );
 }
 
 async function buildAll() {

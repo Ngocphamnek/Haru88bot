@@ -14,7 +14,11 @@ router.get("/diag", (_req, res) => {
   const publicUrl = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "").replace(/\/$/, "") || null;
   const botTokenConfigured = Boolean(process.env.BOT_TOKEN || process.env.BOT_TOKEN_FILE);
   const gameTokenSecretConfigured = Boolean(process.env.GAME_TOKEN_SECRET);
-  const dbUrlConfigured = Boolean(process.env.DATABASE_URL);
+  const dbUrlConfigured = Boolean(
+    process.env.DATABASE_URL ||
+    process.env.RENDER_INTERNAL_DATABASE_URL ||
+    process.env.RENDER_EXTERNAL_DATABASE_URL,
+  );
   const sampleToken = issueGameToken("123456", "xoc-dia");
   const issues = collectIssueReport();
   res.json({

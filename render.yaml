@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: haru88bot
+    env: node
+    region: singapore
+    branch: main
+    buildCommand: pnpm --filter @workspace/admin-panel run build && pnpm --filter @workspace/api-server run build
+    startCommand: pnpm --filter @workspace/api-server run start
