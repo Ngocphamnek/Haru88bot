@@ -21,11 +21,10 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-COPY lib ./lib
-COPY artifacts/api-server/package.json artifacts/admin-panel/package.json ./artifacts/api-server/ ./artifacts/admin-panel/
-COPY pnpm-lock.yaml ./
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY lib/db/package.json lib/api-zod/package.json ./lib/db/ ./lib/api-zod/
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile --filter @workspace/api-server --filter @workspace/db --filter @workspace/api-zod
 
 COPY --from=build /app/artifacts/api-server/dist ./artifacts/api-server/dist
 
