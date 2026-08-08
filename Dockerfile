@@ -22,7 +22,8 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
-COPY lib/db/package.json lib/api-zod/package.json ./lib/db/ ./lib/api-zod/
+COPY lib/db/package.json ./lib/db/
+COPY lib/api-zod/package.json ./lib/api-zod/
 
 RUN pnpm install --prod --frozen-lockfile --filter @workspace/api-server --filter @workspace/db --filter @workspace/api-zod
 
