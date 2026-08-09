@@ -3,7 +3,7 @@ FROM node:24-bullseye-slim AS build
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY lib ./lib
@@ -19,7 +19,7 @@ RUN pnpm install --prod --frozen-lockfile --filter @workspace/api-server --filte
 FROM node:24-bullseye-slim AS runtime
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 
 COPY --from=build /app/artifacts/api-server/dist ./artifacts/api-server/dist
 COPY --from=build /app/node_modules ./node_modules
